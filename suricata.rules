@@ -1,0 +1,1 @@
+alert tcp any any -> any any (msg: "RedLine Stealer"; content:"%USERPROFILE%"; content:"*.txt,*.rtf,*.doc,*.xlsx,*key*,*UTC-*,*mnemonic*,*seed*,*phrase*,*wallet*"; reference:url,bazaar.abuse.ch/sample/705bfca86abe9b53e951eeb23b24e163c36ac98eab6f9beaa8245033f79db4e4/; classtype:exploit-kit; sid:1; rev:1;)
