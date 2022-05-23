@@ -1,20 +1,41 @@
+Long Connection:
 cat conn.log | zeek-cut id.orig_h id.orig_p id.resp_h id.resp_p proto service duration | grep udp | sort -nrk 7 | head
+
+Long Total Connection:
 cat conn.log | zeek-cut id.orig_h id.resp_h duration | sort -k 3 -rn | head -5
+
+Top 10 Connection Counts:
 cat conn.log | zeek-cut id.orig_h id.resp_h id.resp_p proto | awk 'BEGIN{ FS="\t" } { arr[$1 FS $2 FS $3 FS $4] += 1 } END{ for (key in arr) printf "%s%s%s\n", key, FS, arr[key] }' | sort -nrk 5 | head
+
+Top 10 Connection Times:
 cat conn.log | zeek-cut id.orig_h id.resp_h id.resp_p proto duration | awk 'BEGIN{ FS="\t" } { arr[$1 FS $2 FS $3 FS $4] += $5 } END{ for (key in arr) printf "%s%s%s\n", key, FS, arr[key] }' | sort -nrk 5 | head
+
+Top 10 Data Transfer:
 cat conn.log | zeek-cut id.orig_h id.resp_h orig_bytes | awk 'BEGIN{ FS="\t" } { arr[$1 FS $2] += $3 } END{ for (key in arr) printf "%s%s%s\n", key, FS, arr[key] }' | sort -nrk 3 | head
 cat conn.log | zeek-cut id.orig_h id.resp_h orig_bytes resp_bytes | awk 'BEGIN{ FS="\t" } { arr[$1 FS $2] += $3+$4 } END{ for (key in arr) printf "%s%s%s\n", key, FS, arr[key] }' | sort -nrk 3 | head
+
+Top 5 Connections:
 cat conn.log | zeek-cut id.resp_h | sort | uniq -c | sort -n | tail -n 5
-cat dns.log | zeek-cut -d id.orig_h query rcode rcode_name answers | sort | unique -u
+
+All Unique DNS Queries:
+cat dns.log | zeek-cut -d id.orig_h query rcode rcode_name answers | sort | uniq -u
+
+Count of Queries by Domain:
 cat dns.log | zeek-cut query | sort | uniq | rev | cut -d '.' -f 1-2 | rev | sort | uniq -c | sort -nr | head
-cat files.log | zeek-cut -d tx_hosts rx_hosts filename seen_bytes sha256 | sort | unique -u
-cat http.log | zeek-cut -d id.orig_h id.resp_h id.resp_p method host uri referrer user_agent status_code | sort | unique -u
+
+Files Info:
+cat files.log | zeek-cut -d tx_hosts rx_hosts filename seen_bytes sha256 | sort | uniq -u
+
+HTTP Requests:
+cat http.log | zeek-cut -d id.orig_h id.resp_h id.resp_p method host uri referrer user_agent status_code | sort | uniq -u
+
 cat http.log | zeek-cut -d ts method host uri request_body_len | awk '$2 == "POST"' | awk '{print $1,$2,$3$4,$5,$6}'
-cat http.log | zeek-cut id.orig_h id.resp_h host uri user_agent | grep 'client connection'
-cat http.log | zeek-cut id.orig_h id.resp_h host uri user_agent | grep 'Windows-Update-Agent/7.9.9600.18756 Client-Protocol/1.21'
+cat http.log | zeek-cut id.orig_h id.resp_h host uri user_agent | grep 
 cat http.log | zeek-cut method host referrer | awk '$3 != "-"'
 cat http.log | zeek-cut orig_mime_types | sort -u
 cat http.log | zeek-cut resp_mime_types | sort -u
 cat http.log | zeek-cut user_agent | sort -u
 cat http.log | zeek-cut user_agent | sort | uniq -c | sort -n | head
-cat ssl.log | zeek-cut -d id.orig_h id.resp_h id.resp_p version server_name sni_matches_cert | sort | unique -u
+
+SSL Info:
+cat ssl.log | zeek-cut -d id.orig_h id.resp_h id.resp_p version server_name sni_matches_cert ja3 ja3s | sort | uniq -u

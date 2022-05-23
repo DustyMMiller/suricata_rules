@@ -1,0 +1,58 @@
+#!/bin/bash
+# Script to analyze pcap with Zeek
+
+filename=$(basename -- "$1")
+filename="${filename%.*}"
+
+# Make Directory for zeek logs
+mkdir $filename
+cd $filename
+mkdir zeek_logs
+cd zeek_logs
+
+# Run Zeek on the pcap provided
+zeek -r ../../$1 local
+cd ../
+
+echo "Top 10 Long UDP Connection:" >> zeek_info.txt
+cat zeek_logs/conn.log | zeek-cut id.orig_h id.orig_p id.resp_h id.resp_p proto service duration | grep udp | sort -nrk 7 | head >> zeek_info.txt
+
+echo "
+Top 10 Long TCP Connection:" >> zeek_info.txt
+cat zeek_logs/conn.log | zeek-cut id.orig_h id.orig_p id.resp_h id.resp_p proto service duration | grep tcp | sort -nrk 7 | head >> zeek_info.txt
+
+echo "
+Top 10 Connection Counts by Port/Protocol:" >> zeek_info.txt
+cat zeek_logs/conn.log | zeek-cut id.orig_h id.resp_h id.resp_p proto | awk 'BEGIN{ FS="\t" } { arr[$1 FS $2 FS $3 FS $4] += 1 } END{ for (key in arr) printf "%s%s%s\n", key, FS, arr[key] }' | sort -nrk 5 | head >> zeek_info.txt
+
+echo "
+Top 10 Connection Times by Port/Protocol:" >> zeek_info.txt
+cat zeek_logs/conn.log | zeek-cut id.orig_h id.resp_h id.resp_p proto duration | awk 'BEGIN{ FS="\t" } { arr[$1 FS $2 FS $3 FS $4] += $5 } END{ for (key in arr) printf "%s%s%s\n", key, FS, arr[key] }' | sort -nrk 5 | head >> zeek_info.txt
+
+echo "
+Top 10 Data Transfer Out:" >> zeek_info.txt
+cat zeek_logs/conn.log | zeek-cut id.orig_h id.resp_h orig_bytes | awk 'BEGIN{ FS="\t" } { arr[$1 FS $2] += $3 } END{ for (key in arr) printf "%s%s%s\n", key, FS, arr[key] }' | sort -nrk 3 | head >> zeek_info.txt
+
+echo "
+Top 10 Data Transfer In:" >> zeek_info.txt
+cat zeek_logs/conn.log | zeek-cut id.orig_h id.resp_h resp_bytes | awk 'BEGIN{ FS="\t" } { arr[$1 FS $2] += $3 } END{ for (key in arr) printf "%s%s%s\n", key, FS, arr[key] }' | sort -nrk 3 | head >> zeek_info.txt
+
+echo "
+Top 5 Connections:" >> zeek_info.txt
+cat zeek_logs/conn.log | zeek-cut id.resp_h | sort | uniq -c | sort -rn | head -n 5 >> zeek_info.txt
+
+echo "
+Count of Queries by Domain:" >> zeek_info.txt
+cat zeek_logs/dns.log | zeek-cut query | sort | uniq | rev | cut -d '.' -f 1-2 | rev | sort | uniq -c | sort -nr | head >> zeek_info.txt
+
+echo "
+Files Info:" >> zeek_info.txt
+cat zeek_logs/files.log | zeek-cut -d tx_hosts rx_hosts filename seen_bytes sha256 | sort | uniq -u >> zeek_info.txt
+
+echo "
+HTTP Requests:" >> zeek_info.txt
+cat zeek_logs/http.log | zeek-cut -d id.orig_h id.resp_h id.resp_p method host uri referrer user_agent status_code | sort | uniq -u >> zeek_info.txt
+
+echo "
+SSL Info:" >> zeek_info.txt
+cat zeek_logs/ssl.log | zeek-cut -d id.orig_h id.resp_h id.resp_p version server_name sni_matches_cert ja3 ja3s | sort | uniq -u >> zeek_info.txt
